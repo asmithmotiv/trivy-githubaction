@@ -5,14 +5,6 @@ FROM python:3.8.0
 # Run as root (bad practice, Trivy will flag this)
 USER root
 
-# Install packages with known vulnerabilities
-RUN apt-get update && apt-get install -y \
-    curl \
-    wget \
-    openssl \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 COPY requirements.txt .
