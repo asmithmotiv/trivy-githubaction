@@ -1,0 +1,48 @@
+name: Semgrep SAST Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  semgrep:
+    name: Static Analysis (Semgrep)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          # Rule sets to run — these cover the intentional issues in this repo:
+          #   p/python          — Python security rules (hardcoded secrets, injection, etc.)
+          #   p/secrets         — generic secret/credential detection
+          #   p/docker          — Dockerfile best practices
+          #   p/kubernetes      — K8s misconfiguration
+          #   p/terraform       — Terraform security rules
+          #   p/owasp-top-ten   — OWASP Top 10 coverage
+          config: >-
+            p/python
+            p/secrets
+            p/docker
+            p/kubernetes
+            p/terraform
+            p/owasp-top-ten
+          generateSarif: "1"
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}  # optional — enables Semgrep Cloud dashboard
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('semgrep.sarif') != ''
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep

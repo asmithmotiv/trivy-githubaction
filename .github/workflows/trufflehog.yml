@@ -1,0 +1,30 @@
+name: TruffleHog Secret Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  trufflehog:
+    name: Scan for Secrets (TruffleHog)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required — TruffleHog scans full git history
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ""        # scan from the very first commit
+          head: HEAD
+          extra_args: --only-verified --json

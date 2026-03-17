@@ -1,0 +1,68 @@
+name: Checkov IaC Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  checkov:
+    name: IaC Misconfiguration Scan (Checkov)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov on Terraform
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov-terraform-results.sarif
+          soft_fail: true   # don't fail the workflow — we want to see all findings
+
+      - name: Upload Terraform SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('checkov-terraform-results.sarif') != ''
+        with:
+          sarif_file: checkov-terraform-results.sarif
+          category: checkov-terraform
+
+      - name: Run Checkov on Kubernetes
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: kubernetes/
+          framework: kubernetes
+          output_format: sarif
+          output_file_path: checkov-k8s-results.sarif
+          soft_fail: true
+
+      - name: Upload Kubernetes SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('checkov-k8s-results.sarif') != ''
+        with:
+          sarif_file: checkov-k8s-results.sarif
+          category: checkov-kubernetes
+
+      - name: Run Checkov on Dockerfile
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: dockerfile
+          output_format: sarif
+          output_file_path: checkov-docker-results.sarif
+          soft_fail: true
+
+      - name: Upload Dockerfile SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('checkov-docker-results.sarif') != ''
+        with:
+          sarif_file: checkov-docker-results.sarif
+          category: checkov-dockerfile
