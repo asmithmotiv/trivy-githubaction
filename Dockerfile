@@ -9,7 +9,7 @@ USER root
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
-    openssl=1.1.1d-0+deb10u3 \
+    openssl \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 

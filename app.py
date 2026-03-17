@@ -3,7 +3,7 @@ Simple demo app - not meant to run, just to provide context for the repo.
 """
 import os
 
-# Hardcoded secrets - intentionally here for Trivy secret scanning demo
+# Hardcoded secrets - intentionally here for Trivy secret scanning dem
 AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 GITHUB_TOKEN = "ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ012345678"

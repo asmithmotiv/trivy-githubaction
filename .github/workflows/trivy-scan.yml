@@ -38,7 +38,7 @@ jobs:
 
       - name: Upload filesystem SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-fs-results.sarif') != ''
         with:
           sarif_file: 'trivy-fs-results.sarif'
           category: 'trivy-filesystem'
@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload image SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-image-results.sarif') != ''
         with:
           sarif_file: 'trivy-image-results.sarif'
           category: 'trivy-image'
@@ -123,7 +123,7 @@ jobs:
 
       - name: Upload Terraform SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-terraform-results.sarif') != ''
         with:
           sarif_file: 'trivy-terraform-results.sarif'
           category: 'trivy-terraform'
@@ -140,7 +140,7 @@ jobs:
 
       - name: Upload Kubernetes SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-k8s-results.sarif') != ''
         with:
           sarif_file: 'trivy-k8s-results.sarif'
           category: 'trivy-kubernetes'
