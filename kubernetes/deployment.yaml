@@ -1,0 +1,43 @@
+# Intentionally misconfigured Kubernetes manifests for Trivy scanning demo
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insecure-app
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: insecure-app
+  template:
+    metadata:
+      labels:
+        app: insecure-app
+    spec:
+      # Trivy: no automountServiceAccountToken: false
+      containers:
+        - name: app
+          image: python:3.8.0  # old/vulnerable image
+          ports:
+            - containerPort: 8080
+          # Trivy: no resource limits
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              value: "AKIAIOSFODNN7EXAMPLE"           # Trivy: hardcoded secret
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"  # Trivy: hardcoded secret
+            - name: DATABASE_PASSWORD
+              value: "SuperSecret123!"                # Trivy: hardcoded secret
+          securityContext:
+            privileged: true                         # Trivy: privileged container
+            runAsRoot: true
+            allowPrivilegeEscalation: true           # Trivy: privilege escalation allowed
+            readOnlyRootFilesystem: false            # Trivy: writable root filesystem
+            capabilities:
+              add:
+                - SYS_ADMIN                          # Trivy: dangerous capability
+                - NET_ADMIN
+                - ALL                                # Trivy: all capabilities added
+      # Trivy: hostNetwork: true would be flagged
+      hostPID: true                                  # Trivy: host PID namespace shared
+      hostIPC: true                                  # Trivy: host IPC namespace shared

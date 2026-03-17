@@ -1,0 +1,24 @@
+# Missing network policies - no ingress/egress restrictions
+# Trivy flags namespaces/deployments with no NetworkPolicy
+# This file intentionally does NOT define any NetworkPolicy
+# so Trivy can flag unrestricted pod-to-pod communication
+
+# Also: a permissive pod security policy (deprecated but still scanned)
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: permissive-psp
+spec:
+  privileged: true                    # Trivy: privileged pods allowed
+  hostPID: true                       # Trivy: host PID allowed
+  hostIPC: true                       # Trivy: host IPC allowed
+  hostNetwork: true                   # Trivy: host network allowed
+  allowPrivilegeEscalation: true      # Trivy: escalation allowed
+  runAsUser:
+    rule: RunAsAny                    # Trivy: any user including root
+  seLinux:
+    rule: RunAsAny
+  fsGroup:
+    rule: RunAsAny
+  volumes:
+    - '*'                             # Trivy: all volume types allowed
