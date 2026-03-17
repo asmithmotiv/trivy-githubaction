@@ -7,7 +7,6 @@ import os
 AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 GITHUB_TOKEN = "ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ012345678"
-DATABASE_URL = "postgresql://admin:SuperSecret123!@prod-db.example.com:5432/myapp"
 SENDGRID_API_KEY = "SG.abcdefghijklmnopqrstuvwx.ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcde"
 
 def get_db():
