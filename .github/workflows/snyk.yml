@@ -1,0 +1,155 @@
+name: Snyk Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at midnight
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  # -------------------------------------------------------
+  # 1. Open-source / SCA — Python dependency vulnerabilities
+  # -------------------------------------------------------
+  snyk-opensource:
+    name: Open Source (SCA) — Python Deps
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Snyk to check for dependency vulnerabilities
+        uses: snyk/actions/python@master
+        continue-on-error: true   # don't fail the workflow — we want to see all results
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --sarif-file-output=snyk-oss-results.sarif --severity-threshold=medium
+
+      - name: Upload OSS SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('snyk-oss-results.sarif') != ''
+        with:
+          sarif_file: snyk-oss-results.sarif
+          category: snyk-opensource
+
+  # -------------------------------------------------------
+  # 2. SAST — static code analysis
+  # -------------------------------------------------------
+  snyk-code:
+    name: SAST — Static Code Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Snyk Code SAST scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: code test
+          args: --sarif-file-output=snyk-code-results.sarif
+
+      - name: Upload Code SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('snyk-code-results.sarif') != ''
+        with:
+          sarif_file: snyk-code-results.sarif
+          category: snyk-code
+
+  # -------------------------------------------------------
+  # 3. Container — Docker image vulnerabilities
+  # -------------------------------------------------------
+  snyk-container:
+    name: Container Image Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t snyk-demo:${{ github.sha }} .
+
+      - name: Run Snyk container scan
+        uses: snyk/actions/docker@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: snyk-demo:${{ github.sha }}
+          args: --sarif-file-output=snyk-container-results.sarif --severity-threshold=high --file=Dockerfile
+
+      - name: Upload container SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('snyk-container-results.sarif') != ''
+        with:
+          sarif_file: snyk-container-results.sarif
+          category: snyk-container
+
+  # -------------------------------------------------------
+  # 4. IaC — Terraform and Kubernetes misconfigurations
+  # -------------------------------------------------------
+  snyk-iac:
+    name: IaC Misconfiguration Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Snyk IaC scan on terraform/
+        uses: snyk/actions/iac@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          file: terraform/
+          args: --sarif-file-output=snyk-terraform-results.sarif --severity-threshold=medium
+
+      - name: Upload Terraform SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('snyk-terraform-results.sarif') != ''
+        with:
+          sarif_file: snyk-terraform-results.sarif
+          category: snyk-iac-terraform
+
+      - name: Run Snyk IaC scan on kubernetes/
+        uses: snyk/actions/iac@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          file: kubernetes/
+          args: --sarif-file-output=snyk-k8s-results.sarif --severity-threshold=medium
+
+      - name: Upload Kubernetes SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('snyk-k8s-results.sarif') != ''
+        with:
+          sarif_file: snyk-k8s-results.sarif
+          category: snyk-iac-kubernetes
