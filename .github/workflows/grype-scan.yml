@@ -19,29 +19,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Grype
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
       - name: Run Grype filesystem scan (SARIF)
-        uses: anchore/scan-action@v3
-        id: grype-fs
-        with:
-          path: '.'
-          severity-cutoff: medium
-          output-format: sarif
-          fail-build: false
+        run: grype dir:. --output sarif --file grype-fs-results.sarif --fail-on medium || true
+
+      - name: Print filesystem scan table to logs
+        run: grype dir:. --output table --fail-on medium || true
 
       - name: Upload filesystem SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always() && steps.grype-fs.outputs.sarif != ''
+        if: always() && hashFiles('grype-fs-results.sarif') != ''
         with:
-          sarif_file: ${{ steps.grype-fs.outputs.sarif }}
+          sarif_file: grype-fs-results.sarif
           category: grype-filesystem
-
-      - name: Print table output to logs
-        uses: anchore/scan-action@v3
-        with:
-          path: '.'
-          severity-cutoff: medium
-          output-format: table
-          fail-build: false
 
   # -------------------------------------------------------
   # 2. Docker image scan
@@ -60,26 +52,18 @@ jobs:
       - name: Build Docker image
         run: docker build -t grype-demo:${{ github.sha }} .
 
+      - name: Install Grype
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
       - name: Run Grype image scan (SARIF)
-        uses: anchore/scan-action@v3
-        id: grype-image
-        with:
-          image: 'grype-demo:${{ github.sha }}'
-          severity-cutoff: high
-          output-format: sarif
-          fail-build: false
+        run: grype grype-demo:${{ github.sha }} --output sarif --file grype-image-results.sarif --fail-on high || true
+
+      - name: Print image scan table to logs
+        run: grype grype-demo:${{ github.sha }} --output table --fail-on high || true
 
       - name: Upload image SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always() && steps.grype-image.outputs.sarif != ''
+        if: always() && hashFiles('grype-image-results.sarif') != ''
         with:
-          sarif_file: ${{ steps.grype-image.outputs.sarif }}
+          sarif_file: grype-image-results.sarif
           category: grype-image
-
-      - name: Print image scan table to logs
-        uses: anchore/scan-action@v3
-        with:
-          image: 'grype-demo:${{ github.sha }}'
-          severity-cutoff: high
-          output-format: table
-          fail-build: false
