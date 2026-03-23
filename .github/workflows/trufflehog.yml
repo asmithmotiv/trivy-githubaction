@@ -17,11 +17,88 @@ jobs:
         with:
           fetch-depth: 0  # required — TruffleHog scans full git history
 
+      - name: Install TruffleHog
+        run: curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+
       - name: Run TruffleHog
-        uses: trufflesecurity/trufflehog@main
-        continue-on-error: true
+        run: trufflehog git file://. --json --no-fail 2>/dev/null > trufflehog-results.json || true
+
+      - name: Convert JSON output to SARIF
+        run: |
+          python3 - <<'EOF'
+          import json
+
+          results = []
+          rules = {}
+
+          with open("trufflehog-results.json") as f:
+              for line in f:
+                  line = line.strip()
+                  if not line:
+                      continue
+                  try:
+                      finding = json.loads(line)
+                  except Exception:
+                      continue
+
+                  # Skip log/info lines
+                  if "level" in finding:
+                      continue
+
+                  detector = finding.get("DetectorName", "Unknown")
+                  desc = finding.get("DetectorDescription", f"{detector} credential detected by TruffleHog")
+                  git = finding.get("SourceMetadata", {}).get("Data", {}).get("Git", {})
+                  file_path = git.get("file", "unknown")
+                  line_num = max(1, git.get("line", 1))
+                  verified = finding.get("Verified", False)
+
+                  rule_id = f"trufflehog-{detector}"
+                  if rule_id not in rules:
+                      rules[rule_id] = {
+                          "id": rule_id,
+                          "name": detector,
+                          "shortDescription": {"text": f"{detector} credential detected"},
+                          "fullDescription": {"text": desc},
+                          "defaultConfiguration": {"level": "error" if verified else "warning"},
+                      }
+
+                  results.append({
+                      "ruleId": rule_id,
+                      "level": "error" if verified else "warning",
+                      "message": {"text": f"{'Verified' if verified else 'Unverified'} {detector} credential found"},
+                      "locations": [{
+                          "physicalLocation": {
+                              "artifactLocation": {"uri": file_path},
+                              "region": {"startLine": line_num},
+                          }
+                      }],
+                  })
+
+          sarif = {
+              "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+              "version": "2.1.0",
+              "runs": [{
+                  "tool": {
+                      "driver": {
+                          "name": "TruffleHog",
+                          "version": "3",
+                          "informationUri": "https://github.com/trufflesecurity/trufflehog",
+                          "rules": list(rules.values()),
+                      }
+                  },
+                  "results": results,
+              }],
+          }
+
+          with open("trufflehog.sarif", "w") as f:
+              json.dump(sarif, f, indent=2)
+
+          print(f"Converted {len(results)} finding(s) to SARIF")
+          EOF
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('trufflehog.sarif') != ''
         with:
-          path: ./
-          base: ""        # scan from the very first commit
-          head: HEAD
-          extra_args: --json
+          sarif_file: trufflehog.sarif
+          category: trufflehog
