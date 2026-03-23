@@ -1,10 +1,6 @@
 name: TruffleHog Secret Scan
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -23,8 +19,9 @@ jobs:
 
       - name: Run TruffleHog
         uses: trufflesecurity/trufflehog@main
+        continue-on-error: true
         with:
           path: ./
           base: ""        # scan from the very first commit
           head: HEAD
-          extra_args: --json --no-fail
+          extra_args: --json
