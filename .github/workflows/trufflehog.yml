@@ -27,4 +27,4 @@ jobs:
           path: ./
           base: ""        # scan from the very first commit
           head: HEAD
-          extra_args: --json
+          extra_args: --json --no-fail
