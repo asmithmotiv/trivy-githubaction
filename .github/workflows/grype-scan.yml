@@ -1,0 +1,85 @@
+name: Grype Security Scan
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # -------------------------------------------------------
+  # 1. Filesystem / dependency scan
+  # -------------------------------------------------------
+  grype-fs-scan:
+    name: Filesystem Scan (Deps)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Grype filesystem scan (SARIF)
+        uses: anchore/scan-action@v3
+        id: grype-fs
+        with:
+          path: '.'
+          severity-cutoff: medium
+          output-format: sarif
+          fail-build: false
+
+      - name: Upload filesystem SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && steps.grype-fs.outputs.sarif != ''
+        with:
+          sarif_file: ${{ steps.grype-fs.outputs.sarif }}
+          category: grype-filesystem
+
+      - name: Print table output to logs
+        uses: anchore/scan-action@v3
+        with:
+          path: '.'
+          severity-cutoff: medium
+          output-format: table
+          fail-build: false
+
+  # -------------------------------------------------------
+  # 2. Docker image scan
+  # -------------------------------------------------------
+  grype-image-scan:
+    name: Docker Image Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t grype-demo:${{ github.sha }} .
+
+      - name: Run Grype image scan (SARIF)
+        uses: anchore/scan-action@v3
+        id: grype-image
+        with:
+          image: 'grype-demo:${{ github.sha }}'
+          severity-cutoff: high
+          output-format: sarif
+          fail-build: false
+
+      - name: Upload image SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && steps.grype-image.outputs.sarif != ''
+        with:
+          sarif_file: ${{ steps.grype-image.outputs.sarif }}
+          category: grype-image
+
+      - name: Print image scan table to logs
+        uses: anchore/scan-action@v3
+        with:
+          image: 'grype-demo:${{ github.sha }}'
+          severity-cutoff: high
+          output-format: table
+          fail-build: false
